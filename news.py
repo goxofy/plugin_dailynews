@@ -4,8 +4,8 @@ from plugins import register, Plugin, Event, logger, Reply, ReplyType
 
 
 @register
-class TikTok(Plugin):
-    name = "tiktok"
+class News(Plugin):
+    name = "news"
 
     def did_receive_message(self, event: Event):
         pass

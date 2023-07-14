@@ -1,3 +1,3 @@
-from .tiktok import TikTok
+from .news import News
 
-__all__ = ["TikTok"]
+__all__ = ["News"]
