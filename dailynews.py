@@ -6,6 +6,7 @@ from plugins import register, Plugin, Event, logger, Reply, ReplyType
 @register
 class DailyNews(Plugin):
     name = "dailynews"
+    api_base_url = "https://sso.ifanr.com/api/v5/wp/article"
 
     def did_receive_message(self, event: Event):
         pass
