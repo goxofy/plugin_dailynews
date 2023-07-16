@@ -23,6 +23,7 @@ class DailyNews(Plugin):
         return "Use the command #dailynews(or whatever you like set with command field in the config) to get daily news"
 
     def reply(self) -> Reply:
+        reply = Reply(ReplyType.TEXT, "Failed to get daily news")
         try:
             # Get post_id from the first API
             response = requests.get(self.api_base_url + "/stats/?limit=1")
@@ -45,7 +46,7 @@ class DailyNews(Plugin):
             logger.error("Failed to fetch daily news")
         except Exception as e:
             logger.error(f"Error occurred while fetching daily news: {str(e)}")
-        return reply = Reply(ReplyType.TEXT, "Failed to get daily news")
+        return reply
         
     def extract_news_list(self, data) -> list:
         try:
