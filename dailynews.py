@@ -1,5 +1,7 @@
 import re
 import requests
+import time
+from bs4 import BeautifulSoup
 from plugins import register, Plugin, Event, logger, Reply, ReplyType
 
 
@@ -31,12 +33,15 @@ class DailyNews(Plugin):
             if response.status_code == 200:
                 data = response.json()
                 post_id = data["objects"][0]["post_id"]
+                #print(post_id)
 
                 # Get complete news list from the second API
                 related_url = f"{self.api_base_url}/{post_id}/related"
+                #print(related_url)
                 response = requests.get(related_url)
                 if response.status_code == 200:
                     data = response.json()
+                    #print(data)
                     news_list = self.extract_news_list(data)
 
                     if len(news_list) > 0:
@@ -54,16 +59,46 @@ class DailyNews(Plugin):
             # Extract post_content from the data
             post_content = data['objects'][0]['post_content']
 
-            # Extract news titles and links using regular expressions
-            pattern = r'<h3>< a href="(.*?)">(.*?)<\/a><\/h3>'
-            matches = re.findall(pattern, post_content)
-
-            # Generate a list of news with title and link
+            soup = BeautifulSoup(post_content, "html.parser")
+            
+            # 提取emoji和新闻标题
+            emoji_tags = soup.find_all("p", style="float: left; margin-right: 6px; margin-bottom: 0; width: 30px;")
+            title_tags = soup.find_all("div", style="margin-bottom: 0; width: 88%;")
+            
+            emojis = [tag.text.strip() for tag in emoji_tags]
+            titles = [tag.p.text.strip() for tag in title_tags]
+            
+            # 提取链接
+            links = []
+            for title in titles:
+                link_tag = soup.find("h3", text=title)
+                if link_tag and link_tag.a:
+                    link = link_tag.a["href"]
+                    #print(link)
+                    links.append(link)
+                else:
+                    links.append("NoURL")
+            # 缩址          
+            shortened_links = []
+            for link in links:
+                if link != "NoURL":
+                    api_url = f"https://api.uomg.com/api/long2dwz?dwzapi=urlcn&url={link}"
+                    response = requests.get(api_url)
+                    data = response.json()
+                    if data["code"] == 1:
+                        shortened_link = data["ae_url"].replace("\\/", "/")
+                        shortened_links.append(shortened_link)
+                        print(shortened_link)
+                        time.sleep(3)
+                    else:
+                        shortened_links.append(link)
+                else:
+                    shortened_links.append("NoURL")
+ 
+            # 组合输出 
             news_list = []
-            for match in matches:
-                link = match[0]
-                title = match[1]
-                news_list.append({'title': title, 'url': link})
+            for emoji, title, link in zip(emojis, titles, shortened_links):
+                    news_list.append({'title': title, 'url': link, 'emoji': emoji})
 
             return news_list
         except Exception as e:
@@ -71,10 +106,11 @@ class DailyNews(Plugin):
             return []
 
     def format_news_list(self, news_list) -> str:
-        markdown_output = ""
+        format_output = ""
         for news in news_list:
             link = news["url"]
             title = news["title"]
-            markdown_output += f"- [{title}]({link})\n"
+            emoji = news["emoji"]
+            format_output += f"{emoji}{title} ({link})\n"
 
-        return markdown_output
+        return format_output
