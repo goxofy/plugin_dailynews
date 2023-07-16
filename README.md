@@ -3,7 +3,7 @@
 Add the following config in your wechat-gptbot's config.json:
 
 ```bash
- "plugins": [{ "name": "news", "command": <Your command> }]
+ "plugins": [{ "name": "dailynews", "command": <Your command> }]
 ```
 
 `<Your command>` could be any text you like~
