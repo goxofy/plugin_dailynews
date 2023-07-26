@@ -2,12 +2,14 @@ import re
 import requests
 import time
 from bs4 import BeautifulSoup
+from lxml import etree
 from plugins import register, Plugin, Event, logger, Reply, ReplyType
 
 
 @register
 class DailyNews(Plugin):
     name = "dailynews"
+    ifanrnews_url = "https://www.ifanr.com/category/ifanrnews"
     api_base_url = "https://sso.ifanr.com/api/v5/wp/article"
 
     def did_receive_message(self, event: Event):
@@ -28,20 +30,18 @@ class DailyNews(Plugin):
     def reply(self) -> Reply:
         reply = Reply(ReplyType.TEXT, "Failed to get daily news")
         try:
-            # Get post_id from the first API
-            response = requests.get(self.api_base_url + "/stats/?limit=1")
+            # Get post_id from the ifanrnews url
+            response = requests.get(self.ifanrnews_url)
             if response.status_code == 200:
-                data = response.json()
-                post_id = data["objects"][0]["post_id"]
-                #print(post_id)
-
+                html = response.text
+                article_url = (etree.HTML(html).xpath('//*[@id="articles-collection"]/div[2]/div/div[1]/a[2]'))[0].get('href')
+                post_id = re.search(r"\d+$", article_url).group()
+           
                 # Get complete news list from the second API
                 related_url = f"{self.api_base_url}/{post_id}/related"
-                #print(related_url)
                 response = requests.get(related_url)
                 if response.status_code == 200:
                     data = response.json()
-                    #print(data)
                     news_list = self.extract_news_list(data)
 
                     if len(news_list) > 0:
@@ -58,7 +58,6 @@ class DailyNews(Plugin):
         try:
             # Extract post_content from the data
             post_content = data['objects'][0]['post_content']
-
             soup = BeautifulSoup(post_content, "html.parser")
             
             # 提取emoji和新闻标题
@@ -74,7 +73,6 @@ class DailyNews(Plugin):
                 link_tag = soup.find("h3", text=title)
                 if link_tag and link_tag.a:
                     link = link_tag.a["href"]
-                    #print(link)
                     links.append(link)
                 else:
                     links.append("NoURL")
@@ -88,8 +86,7 @@ class DailyNews(Plugin):
                     if data["code"] == 1:
                         shortened_link = data["ae_url"].replace("\\/", "/")
                         shortened_links.append(shortened_link)
-                        print(shortened_link)
-                        time.sleep(3)
+                        time.sleep(0.8)
                     else:
                         shortened_links.append(link)
                 else:
